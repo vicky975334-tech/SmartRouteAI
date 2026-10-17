@@ -1,0 +1,62 @@
+#map {
+    height: 100%;
+    min-height: 420px;
+    width: 100%;
+    border-radius: 0.75rem;
+    z-index: 1;
+}
+
+.webcam-box {
+    position: relative;
+}
+
+.scanning-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: #10b981;
+    box-shadow: 0 0 15px #10b981;
+    animation: scan 2s linear infinite;
+    display: none;
+    z-index: 10;
+}
+
+@keyframes scan {
+    0% { top: 0%; }
+    100% { top: 100%; }
+}
+
+.badge-locked {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.badge-unlocked {
+    background-color: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.active-vehicle {
+    border-color: #6366f1 !important;
+    background-color: #312e81 !important;
+}
+
+/* REAL PHYSICAL GPS NAVIGATION ARROW MARKER */
+.vehicle-nav-arrow {
+    width: 40px;
+    height: 40px;
+    background: #2563eb;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 0 22px rgba(37, 99, 235, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    transition: all 0.3s ease-out;
+}

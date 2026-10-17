@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartRoute AI - Production Build</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Mapbox GL JS CSS & JS -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+
+    <!-- TensorFlow.js for Vision AI Processing -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.0/dist/mobilenet.min.js"></script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Custom Style File -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md">
+                <i class="fa-solid fa-route text-2xl"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide text-indigo-400">SmartRoute AI</h1>
+                <p class="text-xs text-slate-400">GPS Navigation, Vision AI Safety & Hospital SOS</p>
+            </div>
+        </div>
+        <div id="safety-badge" class="badge-locked px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-2 border">
+            <i class="fa-solid fa-lock"></i> Safety Gate Locked
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6">
+        
+        <!-- Left Sidebar: Controls -->
+        <div class="lg:col-span-4 flex flex-col gap-6">
+            
+            <!-- Step 1: Destination Auto-Suggest & Route Cost -->
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md">
+                <h2 class="text-md font-semibold text-indigo-300 mb-3 flex items-center">
+                    <i class="fa-solid fa-location-dot mr-2 text-indigo-400"></i>1. Destination & Route Costing
+                </h2>
+                
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Current Origin (Live Position)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="origin-input" readonly value="Detecting Position..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-indigo-300 focus:outline-none">
+                            <button onclick="getUserLocation()" class="bg-slate-700 hover:bg-slate-600 text-xs px-3 py-2 rounded-lg text-slate-300" title="Refresh Position">
+                                <i class="fa-solid fa-crosshairs"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Auto-Suggest Search Input Box -->
+                    <div class="relative">
+                        <label class="text-xs text-slate-400 block mb-1">Search Destination (Auto-Suggest)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="destination-input" oninput="handleAutoSuggest(this.value)" value="Mumbai, Maharashtra" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500" placeholder="Type destination city..." autocomplete="off">
+                            <button onclick="searchDestination()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-1">
+                                <i class="fa-solid fa-magnifying-glass text-xs"></i> Search
+                            </button>
+                        </div>
+                        
+                        <div id="suggestions-box" class="hidden absolute top-full left-0 right-16 bg-slate-950 border border-slate-700 rounded-lg mt-1 z-[2000] max-h-48 overflow-y-auto shadow-2xl"></div>
+                    </div>
+
+                    <!-- Vehicle Selector -->
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1">Select Vehicle Mode</label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="selectVehicle('bike', this)" class="vehicle-btn active-vehicle bg-slate-700 text-xs py-2 rounded-lg border border-slate-600 text-center transition">
+                                <i class="fa-solid fa-motorcycle text-amber-400 block mb-1 text-base"></i> Bike
+                            </button>
+                            <button onclick="selectVehicle('car', this)" class="vehicle-btn bg-slate-700 text-xs py-2 rounded-lg border border-slate-600 text-center transition">
+                                <i class="fa-solid fa-car text-indigo-400 block mb-1 text-base"></i> Car
+                            </button>
+                            <button onclick="selectVehicle('truck', this)" class="vehicle-btn bg-slate-700 text-xs py-2 rounded-lg border border-slate-600 text-center transition">
+                                <i class="fa-solid fa-truck text-emerald-400 block mb-1 text-base"></i> Truck
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Costing Summary Box -->
+                    <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-700/80 text-xs space-y-1.5">
+                        <div class="flex justify-between text-slate-400">
+                            <span>Total Distance:</span>
+                            <span id="cost-distance" class="text-indigo-300 font-bold">Calculating...</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>Toll Charges:</span>
+                            <span id="cost-toll" class="text-amber-400 font-semibold">₹0</span>
+                        </div>
+                        <div class="flex justify-between text-slate-400">
+                            <span>Fuel Estimate (@ ₹100/L):</span>
+                            <span id="cost-fuel" class="text-slate-200 font-semibold">₹0</span>
+                        </div>
+                        <div class="border-t border-slate-800 pt-1.5 flex justify-between font-extrabold text-emerald-400 text-sm">
+                            <span>Total Trip Costing:</span>
+                            <span id="cost-total">₹0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Camera Safety Gate -->
+            <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 shadow-md">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-md font-semibold text-indigo-300 flex items-center">
+                        <i class="fa-solid fa-shield-halved mr-2 text-indigo-400"></i>2. Helmet & Seatbelt Check
+                    </h2>
+                    <span id="safety-target-tag" class="text-xs text-amber-300 bg-amber-900/40 border border-amber-500/30 px-2 py-0.5 rounded font-medium">Requires: Helmet</span>
+                </div>
+                
+                <div class="webcam-box h-44 flex flex-col items-center justify-center border border-slate-700 mb-3 relative rounded-lg bg-slate-950 overflow-hidden">
+                    <div id="scanning-line" class="scanning-line"></div>
+                    <i id="camera-icon" class="fa-solid fa-camera text-4xl mb-2 text-slate-500"></i>
+                    <p id="camera-text" class="text-xs text-center px-4 text-slate-400">
+                        Scan Helmet or Seatbelt to unlock driving navigation.
+                    </p>
+                    <video id="webcam" class="hidden w-full h-full object-cover" autoplay playsinline muted></video>
+                    <canvas id="detection-canvas" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+                </div>
+
+                <div class="flex gap-2">
+                    <button id="btn-scan" onclick="startStrictHelmetScan()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-eye"></i> <span id="scan-btn-text">Scan Helmet</span>
+                    </button>
+                    <button id="btn-override" onclick="manualOverride()" class="bg-slate-700 hover:bg-slate-600 text-slate-300 font-medium px-3 py-2 rounded-lg text-xs transition">
+                        Manual Confirm
+                    </button>
+                </div>
+                <p id="scan-status" class="text-xs text-slate-400 mt-2 text-center">Status: Waiting for verification...</p>
+            </div>
+
+            <!-- Emergency Hospital SOS Dispatch Card -->
+            <div class="bg-red-950/60 border border-red-500/40 p-4 rounded-xl space-y-2">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xs font-bold text-red-300 flex items-center gap-1.5">
+                        <i class="fa-solid fa-truck-medical text-red-400 text-sm"></i> Emergency Hospital SOS Dispatch
+                    </h3>
+                    <span class="text-[10px] bg-red-900/80 text-red-200 px-2 py-0.5 rounded border border-red-600">Active Helpline</span>
+                </div>
+                <p class="text-[11px] text-slate-300">In case of accident or emergency, send automated GPS location SMS & request ambulance from nearest hospital.</p>
+                <div class="flex gap-2 pt-1">
+                    <button onclick="dispatchHospitalSOS()" class="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-lg text-xs shadow-lg transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-paper-plane"></i> Send SOS to Nearest Hospital
+                    </button>
+                    <a href="tel:108" class="bg-slate-800 hover:bg-slate-700 text-red-300 font-bold px-3 py-2 rounded-lg text-xs border border-red-500/30 flex items-center gap-1">
+                        <i class="fa-solid fa-phone"></i> 108
+                    </a>
+                </div>
+            </div>
+
+            <!-- Step 3: Navigation Control -->
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                <button id="btn-start-nav" disabled onclick="toggleNavigation()" class="w-full bg-slate-700 text-slate-500 font-bold py-3.5 rounded-xl text-sm transition cursor-not-allowed flex items-center justify-center gap-2 shadow-lg">
+                    <i class="fa-solid fa-location-arrow text-base"></i> Start Live Physical GPS Navigation
+                </button>
+            </div>
+        </div>
+
+        <!-- Right Side: Live Map Display -->
+        <div class="lg:col-span-8 flex flex-col gap-6">
+            
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-md flex-1 flex flex-col relative overflow-hidden">
+                
+                <!-- Navigation HUD Overlay -->
+                <div id="navigation-hud" class="hidden absolute top-6 left-6 right-6 z-[1000] bg-slate-900/95 backdrop-blur text-white p-4 rounded-xl shadow-2xl border border-emerald-500/50 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-emerald-600 p-3 rounded-xl text-white text-2xl">
+                                <i class="fa-solid fa-location-arrow"></i>
+                            </div>
+                            <div>
+                                <p id="hud-guidance-title" class="text-lg font-extrabold text-emerald-400">Physical GPS Navigation Active</p>
+                                <p id="hud-guidance-sub" class="text-xs text-slate-300">Distance updates only when you physically move in real world.</p>
+                            </div>
+                        </div>
+                        <button onclick="stopNavigation()" class="bg-red-700 hover:bg-red-800 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white shadow">
+                            <i class="fa-solid fa-xmark mr-1"></i> End Trip
+                        </button>
+                    </div>
+
+                    <!-- Distance Metrics Bar -->
+                    <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800 text-xs">
+                        <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 block mb-0.5">Distance Covered:</span>
+                            <span id="hud-covered-km" class="text-base font-extrabold text-indigo-400">0.0 km</span>
+                        </div>
+                        <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 block mb-0.5">Distance Remaining:</span>
+                            <span id="hud-remaining-km" class="text-base font-extrabold text-emerald-400">0.0 km</span>
+                        </div>
+                    </div>
+
+                    <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                        <div id="hud-progress-bar" class="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full w-0 transition-all duration-500"></div>
+                    </div>
+                </div>
+
+                <!-- Recenter Floating Button -->
+                <button id="btn-recenter" onclick="recenterToUser()" class="absolute bottom-20 right-8 z-[1000] bg-slate-800/90 hover:bg-slate-700 text-indigo-400 p-3 rounded-full border border-slate-600 shadow-2xl transition flex items-center justify-center" title="Recenter Position">
+                    <i class="fa-solid fa-crosshairs text-xl"></i>
+                </button>
+
+                <!-- Ambulance Alert Banner -->
+                <div id="ambulance-alert" class="hidden absolute top-36 left-6 right-6 z-[1000] bg-red-600/95 backdrop-blur text-white px-4 py-3 rounded-xl border border-red-400 shadow-2xl animate-pulse flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-truck-medical text-2xl"></i>
+                        <div>
+                            <p class="font-bold text-sm">Emergency Vehicle Detected Nearby!</p>
+                            <p class="text-xs text-red-100">Verified Ambulance feed active. Please allow safe passage.</p>
+                        </div>
+                    </div>
+                    <button onclick="dismissAlert()" class="text-xs bg-red-800 px-3 py-1.5 rounded-md">Dismiss</button>
+                </div>
+
+                <!-- Map Canvas -->
+                <div id="map"></div>
+
+                <!-- Dynamic En-Route Famous Places -->
+                <div class="mt-4 bg-slate-900 p-3.5 rounded-lg border border-slate-700 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-300 font-bold flex items-center gap-1.5">
+                            <i class="fa-solid fa-star text-amber-400"></i> Famous Attractions & Stops along chosen route:
+                        </span>
+                        <span id="route-name-tag" class="text-[10px] bg-indigo-900/60 border border-indigo-500/40 text-indigo-300 px-2 py-0.5 rounded">National Highway</span>
+                    </div>
+                    <div id="poi-container" class="flex flex-wrap gap-2 text-xs">
+                        <span class="bg-slate-800 border border-slate-700 px-2.5 py-1 rounded text-slate-300">Loading route landmarks...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demo Simulations -->
+            <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 flex items-center justify-between gap-4">
+                <span class="text-xs text-slate-400 font-semibold"><i class="fa-solid fa-sliders mr-1 text-indigo-400"></i> Simulation Controls:</span>
+                <div class="flex gap-3">
+                    <button onclick="triggerAmbulance()" class="bg-red-600/20 hover:bg-red-600/40 text-red-400 border border-red-500/30 text-xs px-3 py-2 rounded-lg transition flex items-center gap-2">
+                        <i class="fa-solid fa-truck-medical"></i> Simulate Ambulance Alert
+                    </button>
+                    <button onclick="toggleTraffic()" class="bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 border border-amber-500/30 text-xs px-3 py-2 rounded-lg transition flex items-center gap-2">
+                        <i class="fa-solid fa-traffic-light"></i> Simulate Traffic Congestion
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Custom Script File -->
+    <script src="script.js"></script>
+</body>
+</html>
